@@ -900,10 +900,6 @@
                         <input type="text" id="last-name" placeholder="Last Name">
                     </div>
                     <div class="search-field">
-                        <label for="land-value">Land Value:</label>
-                        <input type="text" id="land-value" placeholder="Land Value">
-                    </div>
-                    <div class="search-field">
                         <label for="plot-number">Plot Number:</label>
                         <input type="text" id="plot-number" placeholder="Plot Number">
                     </div>
@@ -912,23 +908,43 @@
                         <input type="text" id="plot-size" placeholder="Plot Size">
                     </div>
                     <div class="search-field">
-                        <label for="rate">Rate:</label>
-                        <input type="text" id="rate" placeholder="Rate">
-                    </div>
-                    <div class="search-field">
                         <label for="block-no">Block Number:</label>
                         <input type="text" id="block-no" placeholder="Block Number">
                     </div>
                     <div class="search-field">
-                        <label for="sheet-no">Sheeet Number:</label>
+                        <label for="sheet-no">Sheet Number:</label>
                         <input type="text" id="sheet-no" placeholder="Sheet Number">
                     </div>
+
+                    <!-- Additional fields for "survey" -->
+                    <div id="survey-fields" style="display: none;">
+                        <div class="search-field">
+                            <label for="x-coordinate">X Coordinate:</label>
+                            <input type="text" id="x-coordinate" placeholder="X Coordinate">
+                        </div>
+                        <div class="search-field">
+                            <label for="y-coordinate">Y Coordinate:</label>
+                            <input type="text" id="y-coordinate" placeholder="Y Coordinate">
+                        </div>
+                    </div>
+
+                    <!-- Additional fields for "revenue" -->
+                    <div id="revenue-fields" style="display: none;">
+                        <div class="search-field">
+                            <label for="payment-date">Payment Date:</label>
+                            <input type="text" id="payment-date" placeholder="Payment Date">
+                        </div>
+                        <div class="search-field">
+                            <label for="payment-amount">Payment Amount:</label>
+                            <input type="text" id="payment-amount" placeholder="Payment Amount">
+                        </div>
+                    </div>
+
                     <div class="search-buttons">
                         <button id="query-button">Query</button>
                         <button id="clear-button">Clear</button>
                     </div>
                 </div>
-
             </div>
 
             <div class="sidebar-pane" id="search">
@@ -1107,12 +1123,34 @@
         </div>
     </div>
     <div id="map" class="sidebar-map">
-        <h2 id="result-table-heading"></h2>
-        <div class="result-table-wrapper">
-            <table id="result-table" class="result-table">
-                <thead id="result-table-header"></thead>
-                <tbody id="result-table-content"></tbody>
-            </table>
+        <div class="result-section">
+            <h2 id="result-table-heading"></h2>
+            <div class="result-table-wrapper">
+                <table id="parcels-table" class="result-table">
+                    <thead id="parcels-table-header"></thead>
+                    <tbody id="parcels-table-content"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="result-section">
+            <h2 id="survey-table-heading"></h2>
+            <div class="result-table-wrapper">
+                <table id="survey-table" class="result-table">
+                    <thead id="survey-table-header"></thead>
+                    <tbody id="survey-table-content"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="result-section">
+            <h2 id="revenue-table-heading"></h2>
+            <div class="result-table-wrapper">
+                <table id="revenue-table" class="result-table">
+                    <thead id="revenue-table-header"></thead>
+                    <tbody id="revenue-table-content"></tbody>
+                </table>
+            </div>
         </div>
         <div id="attribute-table" style="display: none;">
             <div class="attribute-header">
@@ -1145,7 +1183,7 @@
                             <input type="text" id="id-number-input" required>
                             <button id="confirm-button">Confirm ID</button>
                             <div id="message"></div>
-                        </div>                       
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1905,83 +1943,124 @@
 
         //Administartors
         document.addEventListener("DOMContentLoaded", function () {
-            const resultTable = document.getElementById("result-table");
-            const resultTableHeader = document.getElementById("result-table-header");
-            let resultTableContent; // Declare the variable here
-
-            // Assign the resultTableContent variable
-            resultTableContent = document.getElementById("result-table-content");
-
-            const resultTableHeading = document.getElementById("result-table-heading");
+            const parcelsTable = document.getElementById("parcels-table");
+            const parcelsTableHeader = document.getElementById("parcels-table-header");
+            const parcelsTableContent = document.getElementById("parcels-table-content");
+            const surveyTable = document.getElementById("survey-table");
+            const surveyTableHeader = document.getElementById("survey-table-header");
+            const surveyTableContent = document.getElementById("survey-table-content");
+            const revenueTable = document.getElementById("revenue-table");
+            const revenueTableHeader = document.getElementById("revenue-table-header");
+            const revenueTableContent = document.getElementById("revenue-table-content");
             const queryButton = document.getElementById("query-button");
             const clearButton = document.getElementById("clear-button");
-            const mapContainer = document.getElementById("map"); 
-
-            function formatDate(dateString) {
-                if (!dateString) {
-                    return "";
-                }
-                const date = new Date(dateString);
-                if (isNaN(date)) {
-                    return "";
-                }
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, "0");
-                const day = String(date.getDate()).padStart(2, "0");
-                return `${year}-${month}-${day}`;
-            }
 
             function handleQuery() {
-                // Clear previous results
-                resultTableContent.innerHTML = "";
-                resultTableHeader.innerHTML = "";
-
                 // Get the selected layer type from the dropdown
                 const layerType = document.getElementById("layer-type").value;
 
                 // Retrieve the input values from the form
-                const idNumber = parseInt(document.getElementById("id-number").value, 10);
+                const idNumber = document.getElementById("id-number").value;
 
                 // Choose the appropriate API endpoint based on the selected layer type
                 let apiEndpoint;
                 let fields;
+                let table;
+                let tableHeader;
+                let tableContent;
+
                 switch (layerType) {
                     case "parcels":
                         apiEndpoint = `https://localhost:7225/api/Parcels/${idNumber}`;
-                        fields = ["iD_Number", "first_Name", "last_Name", "plot_No", "plot_Size", "land_Value", "rate", "sheet_No", "block_No"];
+                        fields = [
+                            "iD_Number",
+                            "first_Name",
+                            "last_Name",
+                            "plot_No",
+                            "plot_Size",
+                            "land_Value",
+                            "rate",
+                            "sheet_No",
+                            "block_No",
+                        ];
+                        formFields = {
+                            ID_Number: document.getElementById("id-number"),
+                            First_Name: document.getElementById("first-name"),
+                            Last_Name: document.getElementById("last-name"),
+                            Plot_No: document.getElementById("plot-number"),
+                            Plot_Size: document.getElementById("plot-size"),
+                            Land_Value: document.getElementById("land-value"),
+                            Rate: document.getElementById("rate"),
+                            Sheet_No: document.getElementById("sheet-no"),
+                            Block_No: document.getElementById("block-no"),
+                        };
+                        table = parcelsTable;
+                        tableHeader = parcelsTableHeader;
+                        tableContent = parcelsTableContent;
                         break;
-                    /*case "survey":
-                        apiEndpoint = `https://localhost:7225/api/Survey/${parcelId}`;
-                        fields = ["parcelId", "x_Coordinate", "y_Coordinate"];
+                    case "survey":
+                        apiEndpoint = `https://localhost:7225/api/Survey/${idNumber}`;
+                        fields = [
+                            "iD_Number",
+                            "first_Name",
+                            "last_Name",
+                            "plot_No",
+                            "plot_Size",
+                            "sheet_No",
+                            "block_No",
+                            "x_Coordinates",
+                            "y_Coordinates",
+                        ];
+                        formFields = {
+                            ID_Number: document.getElementById("id-number"),
+                            First_Name: document.getElementById("first-name"),
+                            Last_Name: document.getElementById("last-name"),
+                            Plot_No: document.getElementById("plot-number"),
+                            Plot_Size: document.getElementById("plot-size"),
+                            Sheet_No: document.getElementById("sheet-no"),
+                            Block_No: document.getElementById("block-no"),
+                        };
+                        table = document.getElementById("survey-table");
+                        tableHeader = document.getElementById("survey-table-header");
+                        tableContent = document.getElementById("survey-table-content");
                         break;
                     case "revenue":
-                        apiEndpoint = `https://localhost:7225/api/Revenue/${parcelId}`;
-                        fields = ["parcelId", "paymentDate", "paymentAmount"];
+                        apiEndpoint = `https://localhost:7225/api/Revenue/${idNumber}`;
+                        fields = [
+                            "iD_Number",
+                            "first_Name",
+                            "last_Name",
+                            "plot_No",
+                            "plot_Size",
+                            "sheet_No",
+                            "block_No",
+                            "paymentDate",
+                            "paymentAmount",
+                        ];
+                        formFields = {
+                            ID_Number: document.getElementById("id-number"),
+                            First_Name: document.getElementById("first-name"),
+                            Last_Name: document.getElementById("last-name"),
+                            Plot_No: document.getElementById("plot-number"),
+                            Plot_Size: document.getElementById("plot-size"),
+                            Sheet_No: document.getElementById("sheet-no"),
+                            Block_No: document.getElementById("block-no"),
+                        };
+                        table = document.getElementById("revenue-table");
+                        tableHeader = document.getElementById("revenue-table-header");
+                        tableContent = document.getElementById("revenue-table-content");
                         break;
-                    case "valuation":
-                        apiEndpoint = `https://localhost:7225/api/Valuation/${parcelId}`;
-                        fields = ["parcelId", "value", "location", "plotSize"];
-                        break;*/
                     default:
                         // Handle unsupported layer types
                         return;
                 }
 
-                // Make an AJAX request to the API endpoint with the query parameters
                 fetch(apiEndpoint)
                     .then((response) => response.json())
                     .then((data) => {
-                        // Populate the form fields with the retrieved data
-                        // Populate the form fields with the retrieved data
-                        document.getElementById("id-number").value = data.iD_Number ?? "";
-                        document.getElementById("first-name").value = data.first_Name ?? "";
-                        document.getElementById("last-name").value = data.last_Name ?? "";
-                        document.getElementById("plot-number").value = data.plot_No ?? "";
-                        document.getElementById("plot-size").value = data.plot_Size ?? "";
-                        document.getElementById("land-value").value = data.land_Value !== null ? data.land_Value : "NULL";
-                        document.getElementById("rate").value = data.rate !== null ? data.rate : "NULL";
-                        document.getElementById("block-no").value = data.block_No ?? "";
-                        document.getElementById("sheet-no").value = data.sheet_No ?? "";
+                        // Clear previous results
+                        tableContent.innerHTML = "";
+                        tableHeader.innerHTML = "";
 
                         // Create the header row
                         const headerRow = document.createElement("tr");
@@ -1990,39 +2069,38 @@
                             headerCell.textContent = field.charAt(0).toUpperCase() + field.slice(1); // Capitalize the column names
                             headerRow.appendChild(headerCell);
                         });
-                        resultTableHeader.appendChild(headerRow);
+                        tableHeader.appendChild(headerRow);
 
-                        // Process the API response and generate the result content dynamically
                         if (Array.isArray(data)) {
-                            // For array responses like buildings or survey
+                            // For array responses like survey
                             data.forEach((item) => {
                                 const itemContainer = document.createElement("tr");
                                 fields.forEach((field) => {
                                     const fieldCell = document.createElement("td");
                                     fieldCell.textContent = item[field];
-                                    fieldCell.style.textAlign = "left"; // Align values to the right
+                                    fieldCell.style.textAlign = "left"; // Align values to the left
                                     itemContainer.appendChild(fieldCell);
                                 });
-                                resultTableContent.appendChild(itemContainer);
+                                tableContent.appendChild(itemContainer);
                             });
                         } else {
-                            // For single object responses like parcels, revenue, or valuation
+                            // For single object responses like parcels or revenue
                             const itemContainer = document.createElement("tr");
                             fields.forEach((field) => {
                                 const fieldCell = document.createElement("td");
                                 fieldCell.textContent = data[field];
-                                fieldCell.style.textAlign = "left"; // Align values to the right
+                                fieldCell.style.textAlign = "left"; // Align values to the left
                                 itemContainer.appendChild(fieldCell);
                             });
-                            resultTableContent.appendChild(itemContainer);
+                            tableContent.appendChild(itemContainer);
                         }
 
                         // Set the table heading to the selected layer type
-                        resultTableHeading.textContent =
-                            layerType.charAt(0).toUpperCase() + layerType.slice(1);
+                        const tableHeading = document.getElementById(`${layerType}-table-heading`);
+                        tableHeading.textContent = layerType.charAt(0).toUpperCase() + layerType.slice(1);
 
                         // Show the result table
-                        resultTable.style.display = "table";
+                        table.style.display = "table";
                     })
                     .catch((error) => {
                         console.error("Error: ", error);
@@ -2034,22 +2112,19 @@
                 // Clear form fields
                 document.getElementById("layer-type").value = "parcels";
                 document.getElementById("id-number").value = "";
-                document.getElementById("first-name").value = "";
-                document.getElementById("last-name").value = "";
-                document.getElementById("land-value").value = "";
-                document.getElementById("plot-number").value = "";
-                document.getElementById("rate").value = "";
-                document.getElementById("block-no").value = "";
-                document.getElementById("sheet-no").value = "";
-
 
                 // Clear previous results
-                resultTableContent.innerHTML = "";
-                resultTableHeader.innerHTML = ""; // Clear the table headings as well
-                resultTable.style.display = "none";
+                parcelsTableContent.innerHTML = "";
+                parcelsTableHeader.innerHTML = "";
+                surveyTableContent.innerHTML = "";
+                surveyTableHeader.innerHTML = "";
+                revenueTableContent.innerHTML = "";
+                revenueTableHeader.innerHTML = "";
 
-                // Reload the application
-                location.reload();
+                // Hide the result tables
+                parcelsTable.style.display = "none";
+                surveyTable.style.display = "none";
+                revenueTable.style.display = "none";
             }
 
             function attachEventListeners() {
@@ -2064,6 +2139,7 @@
 
             attachEventListeners();
         });
+
 
         //logout
         function confirmLogout() {
